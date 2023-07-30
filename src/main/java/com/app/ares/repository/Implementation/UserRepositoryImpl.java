@@ -2,9 +2,11 @@ package com.app.ares.repository.Implementation;
 
 import com.app.ares.domain.Role;
 import com.app.ares.domain.User;
+import com.app.ares.domain.UserPrincipal;
 import com.app.ares.exception.ApiException;
 import com.app.ares.repository.RoleRepository;
 import com.app.ares.repository.UserRepository;
+import com.app.ares.rowmapper.UserRowMapper;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.dao.EmptyResultDataAccessException;
@@ -13,6 +15,9 @@ import org.springframework.jdbc.core.namedparam.NamedParameterJdbcTemplate;
 import org.springframework.jdbc.core.namedparam.SqlParameterSource;
 import org.springframework.jdbc.support.GeneratedKeyHolder;
 import org.springframework.jdbc.support.KeyHolder;
+import org.springframework.security.core.userdetails.UserDetails;
+import org.springframework.security.core.userdetails.UserDetailsService;
+import org.springframework.security.core.userdetails.UsernameNotFoundException;
 import org.springframework.security.crypto.bcrypt.BCryptPasswordEncoder;
 import org.springframework.stereotype.Repository;
 import org.springframework.web.servlet.support.ServletUriComponentsBuilder;
@@ -24,13 +29,14 @@ import java.util.UUID;
 import static com.app.ares.enumeration.RoleType.ROLE_USER;
 import static com.app.ares.enumeration.VerificationType.ACCOUNT;
 import static com.app.ares.query.UserQuery.*;
+import static java.util.Map.of;
 import static java.util.Objects.requireNonNull;
 
 @Repository
 @RequiredArgsConstructor
 @Slf4j
-public class UserRepositoryImpl implements UserRepository<User> {
-
+public class UserRepositoryImpl implements UserRepository<User>, UserDetailsService {
+    private static final String DATE_FORMAT = "yyyy-MM-dd hh:mm:ss";
     private final NamedParameterJdbcTemplate jdbcTemplate;
     private final RoleRepository<Role> roleRepository;
     private final BCryptPasswordEncoder passwordEncoder;
@@ -73,7 +79,7 @@ public class UserRepositoryImpl implements UserRepository<User> {
 
 
     @Override
-    public Collection list(int page, int pageSize) {
+    public Collection<User> list(int page, int pageSize) {
         return null;
     }
 
@@ -93,8 +99,9 @@ public class UserRepositoryImpl implements UserRepository<User> {
     }
 
     private Integer getEmailCount(String email) {
-        return jdbcTemplate.queryForObject(COUNT_USER_EMAIL_QUERY,
-                Map.of("email",email),Integer.class);
+        return jdbcTemplate.queryForObject(
+                COUNT_USER_EMAIL_QUERY,
+                of("email", email), Integer.class);
     }
 
     private SqlParameterSource getSqlParameterSource(User user) {
@@ -103,9 +110,7 @@ public class UserRepositoryImpl implements UserRepository<User> {
                 .addValue("firstName", user.getFirstName())
                 .addValue("lastName", user.getLastName())
                 .addValue("email", user.getEmail())
-                .addValue("password", passwordEncoder.
-                        encode(user.getPassword()));
-
+                .addValue("password", passwordEncoder.encode(user.getPassword()));
     }
 
     private String getVerificationUrl(String key, String type){
@@ -115,4 +120,31 @@ public class UserRepositoryImpl implements UserRepository<User> {
 
     }
 
+    @Override
+    public UserDetails loadUserByUsername(String email) throws UsernameNotFoundException {
+        User user = getUserByEmail(email);
+        if(user == null){
+            log.error("User is not found in the database");
+            throw new UsernameNotFoundException("User is not found in the database");
+        }else{
+            log.info("User found in the database: {}",email);
+            return new UserPrincipal(user,roleRepository.getRoleByUserId(user.getId()).getPermission());
+        }
+    }
+
+    @Override
+    public User getUserByEmail(String email) {
+        try{
+            User user =  jdbcTemplate.queryForObject(SELECT_USER_BY_EMAIL_QUERY, Map.of("email",email), new UserRowMapper());
+            return user;
+
+        }catch (EmptyResultDataAccessException e){
+            log.error(e.getMessage());
+            throw new ApiException("No user found by email: "+ email);
+        }
+        catch (Exception e){
+            log.error(e.getMessage());
+            throw new ApiException("An error occurred. Please try again");
+        }
+    }
 }

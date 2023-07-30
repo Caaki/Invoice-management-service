@@ -1,0 +1,22 @@
+spring:
+  datasource:
+    url: jdbc:mysql://192.168.1.44:3306/invoice_project
+    username: caki
+    password: 1201991n
+  jpa:
+    database-platform: org.hibernate.dialect.MySQL8InnoDBDialect
+    generate-ddl: true
+    show-sql: true
+    hibernate:
+      ddl-auto: update
+    properties:
+      hibernate:
+        globally_quoted_indentifiers: true
+        dialect: org.hibernate.dialect.MySQL8Dialect
+        format_sql: true
+  sql:
+    init:
+      mode: never
+      continue-on-error: false
+
+

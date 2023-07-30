@@ -6,6 +6,8 @@ import com.app.ares.dto.UserDTO;
 public interface UserService {
 
     UserDTO createUser(User user);
+    UserDTO getUserByEmail(String email);
+    void sendVerificationCode(UserDTO user);
 
 
 }
