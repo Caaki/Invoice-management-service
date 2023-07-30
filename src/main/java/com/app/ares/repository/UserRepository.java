@@ -1,6 +1,7 @@
 package com.app.ares.repository;
 
 import com.app.ares.domain.User;
+import com.app.ares.dto.UserDTO;
 
 import java.util.Collection;
 
@@ -13,4 +14,8 @@ public interface UserRepository <T extends User>{
     Boolean delete(Long id);
 
     User getUserByEmail(String email);
+
+    void sendVerificationCode(UserDTO user);
+
+    User verifyCode(String email, String code);
 }

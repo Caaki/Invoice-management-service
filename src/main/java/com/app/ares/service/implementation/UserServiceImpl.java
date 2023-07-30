@@ -1,31 +1,45 @@
 package com.app.ares.service.implementation;
 
+import com.app.ares.domain.Role;
 import com.app.ares.domain.User;
 import com.app.ares.dto.UserDTO;
-import com.app.ares.dtomapper.UserDTOMapper;
+import com.app.ares.repository.RoleRepository;
 import com.app.ares.repository.UserRepository;
 import com.app.ares.service.UserService;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
+
+import static com.app.ares.dtomapper.UserDTOMapper.toUserDTO;
 
 @Service
 @RequiredArgsConstructor
 public class UserServiceImpl implements UserService {
 
     private final UserRepository<User> userRepository;
+    private final RoleRepository<Role> roleRepository;
 
     @Override
     public UserDTO createUser(User user) {
-        return UserDTOMapper.toUserDTO(userRepository.create(user));
+        return mapToUserDTO(userRepository.create(user));
     }
 
     @Override
     public UserDTO getUserByEmail(String email) {
-        return UserDTOMapper.toUserDTO(userRepository.getUserByEmail(email));
+        return mapToUserDTO(userRepository.getUserByEmail(email));
     }
 
     @Override
     public void sendVerificationCode(UserDTO user) {
-
+        userRepository.sendVerificationCode(user);
     }
+
+    @Override
+    public UserDTO verifyCode(String email, String code) {
+        return mapToUserDTO(userRepository.verifyCode(email, code));
+    }
+
+    private UserDTO mapToUserDTO(User user){
+        return toUserDTO(user, roleRepository.getRoleByUserId(user.getId()));
+    }
+
 }
