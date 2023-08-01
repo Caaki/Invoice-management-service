@@ -17,6 +17,7 @@ import java.io.IOException;
 import java.util.List;
 import java.util.Map;
 
+import static com.app.ares.utils.ExceptionUtils.processError;
 import static java.util.Arrays.asList;
 import static java.util.Optional.ofNullable;
 import static org.apache.commons.lang3.StringUtils.EMPTY;
@@ -29,7 +30,7 @@ import static org.springframework.http.HttpHeaders.AUTHORIZATION;
 public class CustomAuthorizationFilter extends OncePerRequestFilter {
 
     private static final String TOKEN_PREFIX = "Bearer ";
-    private static final String [] PUBLIC_ROUTES = {"/user/login", "/user/register"};
+    private static final String [] PUBLIC_ROUTES = {"/user/login", "/user/register", "/user/verify/code"};
     public static final String HTTP_METHOD_OPTIONS = "OPTIONS";
     private final TokenProvider tokenProvider;
     protected static final String TOKEN_KEY = "token";
@@ -37,23 +38,22 @@ public class CustomAuthorizationFilter extends OncePerRequestFilter {
 
     @Override
     protected void doFilterInternal(HttpServletRequest request, HttpServletResponse response, FilterChain filterChain) throws ServletException, IOException {
-
         try{
             Map<String, String> values = getRequestValues(request);
             String token = getToken(request);
-            if (tokenProvider.isTokenValid(values.get("email"),token)){
+            if (tokenProvider.isTokenValid(values.get(EMAIL_KEY),token)){
                 List<GrantedAuthority> authorities = tokenProvider.getAuthorities(values.get(TOKEN_KEY));
                 Authentication authentication = tokenProvider.getAuthentication(values.get(EMAIL_KEY),authorities,request);
                 SecurityContextHolder.getContext().setAuthentication(authentication);
-            }else {
-                SecurityContextHolder.clearContext();
-                filterChain.doFilter(request,response);
             }
+            else {
+                SecurityContextHolder.clearContext();
+            }
+                filterChain.doFilter(request,response);
         }catch (Exception e){
             log.error(e.getMessage());
-            //processError(request,response,e);
+            processError(request,response,e);
         }
-
     }
 
     private String getToken(HttpServletRequest request) {
@@ -73,6 +73,4 @@ public class CustomAuthorizationFilter extends OncePerRequestFilter {
                 request.getMethod().equalsIgnoreCase(HTTP_METHOD_OPTIONS) ||
                 asList(PUBLIC_ROUTES).contains(request.getRequestURI());
     }
-
-
 }

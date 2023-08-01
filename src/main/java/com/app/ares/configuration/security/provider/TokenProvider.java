@@ -1,6 +1,7 @@
 package com.app.ares.configuration.security.provider;
 
 import com.app.ares.domain.UserPrincipal;
+import com.app.ares.service.UserService;
 import com.auth0.jwt.JWT;
 import com.auth0.jwt.JWTVerifier;
 import com.auth0.jwt.algorithms.Algorithm;
@@ -8,6 +9,7 @@ import com.auth0.jwt.exceptions.InvalidClaimException;
 import com.auth0.jwt.exceptions.JWTVerificationException;
 import com.auth0.jwt.exceptions.TokenExpiredException;
 import jakarta.servlet.http.HttpServletRequest;
+import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.apache.commons.lang3.StringUtils;
 import org.springframework.beans.factory.annotation.Value;
@@ -28,8 +30,10 @@ import static java.util.stream.Collectors.toList;
 
 @Component
 @Slf4j
+@RequiredArgsConstructor
 public class TokenProvider {
 
+    private final UserService userService;
     public static final String TOKEN_CANNOT_BE_VERIFIED = "Token cannot be verified";
     private static final String ARES ="ARES";
     private static final String CUSTOMER_MANAGEMENT_SERVICE = "CUSTOMER_MANAGEMENT_SERVICE";
@@ -97,7 +101,7 @@ public class TokenProvider {
     }
 
     public Authentication getAuthentication(String email, List<GrantedAuthority> authorities, HttpServletRequest request){
-        UsernamePasswordAuthenticationToken authToken = new UsernamePasswordAuthenticationToken(email,null,authorities);
+        UsernamePasswordAuthenticationToken authToken = new UsernamePasswordAuthenticationToken(userService.getUserByEmail(email),null,authorities);
         authToken.setDetails(new WebAuthenticationDetailsSource().buildDetails(request));
         return authToken;
     }
