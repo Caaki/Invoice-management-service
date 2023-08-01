@@ -39,6 +39,8 @@ public class SecurityConfig {
             "/user/verify/code/**",
             "/user/verify/password/**",
             "/user/resetpassword/**",
+            "/user/verify/account/**",
+            "/user/refresh/token/**"
 
     };
 

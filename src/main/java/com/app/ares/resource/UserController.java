@@ -30,13 +30,17 @@ import java.util.Map;
 import static com.app.ares.utils.ExceptionUtils.processError;
 import static java.time.LocalDateTime.now;
 import static java.util.Map.of;
-import static org.springframework.http.HttpStatus.NOT_FOUND;
-import static org.springframework.http.HttpStatus.OK;
+import static org.springframework.http.HttpHeaders.AUTHORIZATION;
+import static org.springframework.http.HttpStatus.*;
+
 @Slf4j
 @RestController
 @RequestMapping("/user")
 @RequiredArgsConstructor
 public class UserController {
+
+    private static final String TOKEN_PREFIX = "Bearer ";
+
     private final UserService userService;
     private final HttpServletRequest request;
     private final HttpServletResponse response;
@@ -58,8 +62,6 @@ public class UserController {
     }
 
 
-
-
     @PostMapping("/register")
     public ResponseEntity<HttpResponse> saveUser(@RequestBody @Valid User user){
         UserDTO userDto = userService.createUser(user);
@@ -73,7 +75,7 @@ public class UserController {
                         .build());
     }
 
-
+    //2factor auth verification
     @GetMapping("/verify/code/{email}/{code}")
     public ResponseEntity<HttpResponse> verifyCode(@PathVariable("email") String email, @PathVariable("code") String code){
         UserDTO userDTO = userService.verifyCode(email,code);
@@ -88,6 +90,7 @@ public class UserController {
                         .statusCode(OK.value())
                         .build());
     }
+    //2factor auth verification ended
 
     @GetMapping("/profile")
     public ResponseEntity<HttpResponse> profile(Authentication authentication){
@@ -103,6 +106,7 @@ public class UserController {
                         .build());
     }
 
+    //Reset password methods
     @GetMapping("/resetpassword/{email}")
     public ResponseEntity<HttpResponse> resetPassword (@PathVariable("email") String email){
         userService.resetPassword(email);
@@ -144,6 +148,48 @@ public class UserController {
                         .statusCode(OK.value())
                         .build());
     }
+    // Reset password methods ended
+
+    //Verify account
+    @GetMapping("/verify/account/{code}")
+    public ResponseEntity<HttpResponse> verifyA(@PathVariable("code") String code){
+        return ResponseEntity.ok().body(
+                HttpResponse.builder()
+                        .timeStamp(now().toString())
+                        .message(userService.verifyAccountCode(code).isEnabled()?
+                                "Account already verified." : "Account verified.")
+                        .status(OK)
+                        .statusCode(OK.value())
+                        .build());
+    }
+    //End of verify account
+
+    @GetMapping("/refresh/token")
+    public ResponseEntity<HttpResponse> refreshToken(HttpServletRequest request){
+        if (isHeaderTokenValid(request)){
+            String token = request.getHeader(AUTHORIZATION).substring(TOKEN_PREFIX.length());
+            UserDTO userDTO = userService.getUserByEmail(tokenProvider.getSubject(token, request));
+            return ResponseEntity.ok().body(
+                    HttpResponse.builder()
+                            .timeStamp(now().toString())
+                            .data(of("user", userDTO,
+                                    "access_token", tokenProvider.createAccessToken(getUserPrincipal(userDTO)),
+                                    "refresh_token", token))
+                            .message("Token refreshed")
+                            .status(OK)
+                            .statusCode(OK.value())
+                            .build());
+        }
+        else {
+            return new ResponseEntity<>(
+                    HttpResponse.builder()
+                            .timeStamp(now().toString())
+                            .reason("Refresh token missing or invalid")
+                            .status(BAD_REQUEST)
+                            .statusCode(BAD_REQUEST.value())
+                            .build(), BAD_REQUEST);
+        }
+    }
 
 
     @RequestMapping("/error")
@@ -157,9 +203,14 @@ public class UserController {
                         .build(), NOT_FOUND);
     }
 
-
-
-
+    private boolean isHeaderTokenValid(HttpServletRequest request) {
+        return  request.getHeader(AUTHORIZATION) != null
+                && request.getHeader(AUTHORIZATION).startsWith(TOKEN_PREFIX)
+                && tokenProvider.isTokenValid(
+                        tokenProvider.getSubject(request.getHeader(AUTHORIZATION).substring(TOKEN_PREFIX.length()), request),
+                        request.getHeader(AUTHORIZATION).substring(TOKEN_PREFIX.length())
+                );
+    }
 
     private URI getUri() {
         return URI.create(
@@ -190,7 +241,6 @@ public class UserController {
     private ResponseEntity<HttpResponse> sendVerificationCode(UserDTO userDTO) {
 
         userService.sendVerificationCode(userDTO);
-
         return ResponseEntity.ok().body(
                 HttpResponse.builder()
                         .timeStamp(now().toString())
