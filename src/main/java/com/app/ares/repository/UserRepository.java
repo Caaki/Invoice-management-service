@@ -2,6 +2,7 @@ package com.app.ares.repository;
 
 import com.app.ares.domain.User;
 import com.app.ares.dto.UserDTO;
+import com.app.ares.form.UpdateForm;
 
 import java.util.Collection;
 
@@ -19,4 +20,5 @@ public interface UserRepository <T extends User>{
     T verifyPasswordKey(String key);
     void renewPassword(String key, String password, String confirmation);
     T verifyAccountCode(String code);
+    T updateUserDetails(UpdateForm user);
 }

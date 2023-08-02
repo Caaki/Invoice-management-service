@@ -6,6 +6,7 @@ import com.app.ares.domain.UserPrincipal;
 import com.app.ares.dto.UserDTO;
 import com.app.ares.enumeration.VerificationType;
 import com.app.ares.exception.ApiException;
+import com.app.ares.form.UpdateForm;
 import com.app.ares.repository.RoleRepository;
 import com.app.ares.repository.UserRepository;
 import com.app.ares.rowmapper.UserRowMapper;
@@ -34,6 +35,7 @@ import static com.app.ares.enumeration.RoleType.ROLE_USER;
 import static com.app.ares.enumeration.VerificationType.ACCOUNT;
 import static com.app.ares.enumeration.VerificationType.PASSWORD;
 import static com.app.ares.query.UserQuery.*;
+import static com.app.ares.utils.SmsUtils.sendSMS;
 import static java.util.Map.of;
 import static java.util.Objects.requireNonNull;
 import static org.apache.commons.lang3.RandomStringUtils.randomAlphabetic;
@@ -89,7 +91,17 @@ public class UserRepositoryImpl implements UserRepository<User>, UserDetailsServ
 
     @Override
     public User get(Long id) {
-        return null;
+        try{
+            return   jdbcTemplate.queryForObject(SELECT_USER_BY_ID_QUERY, Map.of("id", id), new UserRowMapper());
+
+        }catch (EmptyResultDataAccessException e){
+            log.error(e.getMessage());
+            throw new ApiException("No user found by id: "+ id);
+        }
+        catch (Exception e){
+            log.error(e.getMessage());
+            throw new ApiException("An error occurred. Please try again");
+        }
     }
 
     @Override
@@ -197,6 +209,22 @@ public class UserRepositoryImpl implements UserRepository<User>, UserDetailsServ
                 .addValue("password", passwordEncoder.encode(user.getPassword()));
     }
 
+    private SqlParameterSource getSqlParameterSource(UpdateForm user) {
+
+        return new MapSqlParameterSource()
+                .addValue("id",user.getId())
+                .addValue("firstName", user.getFirstName())
+                .addValue("lastName", user.getLastName())
+                .addValue("email", user.getEmail())
+                //.addValue("password", passwordEncoder.encode(user.getPassword()))
+                .addValue("address",user.getAddress())
+                .addValue("phone",user.getPhone())
+                .addValue("title",user.getTitle())
+                .addValue("bio",user.getBio())
+                ;
+
+    }
+
     private String getVerificationUrl(String key, String type){
         return ServletUriComponentsBuilder.fromCurrentContextPath()
                 .path("/user/verify/" + type + "/" + key).toUriString();
@@ -239,11 +267,13 @@ public class UserRepositoryImpl implements UserRepository<User>, UserDetailsServ
             throw new ApiException("This link has expired. Please reset your password again.");
         }
         try {
-            User user = jdbcTemplate.queryForObject(SELECT_USER_BY_PASSWORD_URL_QUERY, Map.of("url", getVerificationUrl(key,PASSWORD.getType())), new UserRowMapper());
+            User user = jdbcTemplate.queryForObject(
+                    SELECT_USER_BY_PASSWORD_URL_QUERY,
+                    Map.of("url", getVerificationUrl(key,PASSWORD.getType())), new UserRowMapper());
             return user;
         } catch (EmptyResultDataAccessException exception) {
             log.error(exception.getMessage());
-            throw new ApiException("This url is not valid. Please reset password again again.");
+            throw new ApiException("This url is not valid. Please reset password again.");
         } catch (Exception exception) {
             throw new ApiException("An error occurred. Please try again.");
         }
@@ -260,7 +290,9 @@ public class UserRepositoryImpl implements UserRepository<User>, UserDetailsServ
                     "password",passwordEncoder.encode(password),
                     "url", getVerificationUrl(key,PASSWORD.getType())));
 
-            jdbcTemplate.update(DELETE_VERIFICATION_BY_URL_QUERY, Map.of("url", getVerificationUrl(key,PASSWORD.getType())));
+            jdbcTemplate.update(
+                    DELETE_VERIFICATION_BY_URL_QUERY,
+                    Map.of("url", getVerificationUrl(key,PASSWORD.getType())));
         } catch (Exception exception) {
             throw new ApiException("An error occurred. Please try again.");
         }
@@ -270,7 +302,9 @@ public class UserRepositoryImpl implements UserRepository<User>, UserDetailsServ
     @Override
     public User verifyAccountCode(String code) {
         try {
-            User user = jdbcTemplate.queryForObject(SELECT_USER_BY_ACCOUNT_URL_QUERY, Map.of("url", getVerificationUrl(code,ACCOUNT.getType())), new UserRowMapper());
+            User user = jdbcTemplate.queryForObject(
+                    SELECT_USER_BY_ACCOUNT_URL_QUERY,
+                    Map.of("url", getVerificationUrl(code,ACCOUNT.getType())), new UserRowMapper());
             jdbcTemplate.update(UPDATE_USER_ENABLED_QUERY, Map.of("enabled",true, "userId", user.getId()));
             return user;
         } catch (EmptyResultDataAccessException exception) {
@@ -280,10 +314,29 @@ public class UserRepositoryImpl implements UserRepository<User>, UserDetailsServ
         }
     }
 
+    @Override
+    public User updateUserDetails(UpdateForm user) {
+        try {
+            jdbcTemplate.update(
+                    UPDATE_USER_DETAILS_QUERY, getSqlParameterSource(user));
+            return get(user.getId());
+        }catch (EmptyResultDataAccessException e){
+            throw new ApiException("No user found by id: "+ user.getId());
+
+
+        }
+        catch (Exception exception) {
+            log.error(exception.getMessage());
+            throw new ApiException("This url is not valid. Please reset password again again.");
+        }
+    }
+
     private boolean isLinkExpired(String key, VerificationType password) {
 
         try {
-            return jdbcTemplate.queryForObject(SELECT_EXPIRATION_BY_URL, Map.of("url", getVerificationUrl(key,password.getType())), Boolean.class);
+            return jdbcTemplate.queryForObject(
+                    SELECT_EXPIRATION_BY_URL,
+                    Map.of("url", getVerificationUrl(key,password.getType())), Boolean.class);
         } catch (EmptyResultDataAccessException exception) {
             log.error(exception.getMessage());
             throw new ApiException("This url is not valid. Please reset password again again.");
@@ -298,7 +351,7 @@ public class UserRepositoryImpl implements UserRepository<User>, UserDetailsServ
             log.info(String.valueOf(LocalDateTime.now()));
             return jdbcTemplate.queryForObject(SELECT_CODE_EXPIRATION_QUERY, Map.of("code", code), Boolean.class);
         } catch (EmptyResultDataAccessException exception) {
-            throw new ApiException("This code is not valid. Please login again.");
+            throw new ApiException("This code is not valid. Please try again.");
         } catch (Exception exception) {
             throw new ApiException("An error occurred. Please try again.");
         }

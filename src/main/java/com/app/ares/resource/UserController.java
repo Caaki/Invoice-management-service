@@ -8,6 +8,7 @@ import com.app.ares.dto.UserDTO;
 import com.app.ares.dtomapper.UserDTOMapper;
 import com.app.ares.exception.ApiException;
 import com.app.ares.form.LoginForm;
+import com.app.ares.form.UpdateForm;
 import com.app.ares.service.RoleService;
 import com.app.ares.service.UserService;
 import jakarta.servlet.http.HttpServletRequest;
@@ -26,8 +27,10 @@ import org.springframework.web.servlet.support.ServletUriComponentsBuilder;
 import java.net.URI;
 import java.time.LocalDateTime;
 import java.util.Map;
+import java.util.concurrent.TimeUnit;
 
 import static com.app.ares.utils.ExceptionUtils.processError;
+import static com.app.ares.utils.UserUtils.*;
 import static java.time.LocalDateTime.now;
 import static java.util.Map.of;
 import static org.springframework.http.HttpHeaders.AUTHORIZATION;
@@ -53,12 +56,8 @@ public class UserController {
     @PostMapping("/login")
     public ResponseEntity<HttpResponse> login(@RequestBody @Valid LoginForm loginForm){
         Authentication authentication = authenticate(loginForm.getEmail(),loginForm.getPassword());
-        UserDTO userDTO = getAuthenticatedUser(authentication);
+        UserDTO userDTO = getLoggedInUser(authentication);
         return userDTO.isUsingMfa() ? sendVerificationCode(userDTO): sendResponse(userDTO);
-    }
-
-    private UserDTO getAuthenticatedUser(Authentication authentication){
-        return ((UserPrincipal) authentication.getPrincipal()).getUser();
     }
 
 
@@ -93,14 +92,27 @@ public class UserController {
     //2factor auth verification ended
 
     @GetMapping("/profile")
-    public ResponseEntity<HttpResponse> profile(Authentication authentication){
-        UserDTO userDTO = userService.getUserByEmail(authentication.getName());
-        System.out.println(authentication);
+    public ResponseEntity<HttpResponse> profile(Authentication authentication) {
+        UserDTO user = userService.getUserByEmail(getAuthenticatedUser(authentication).getEmail());
         return ResponseEntity.ok().body(
                 HttpResponse.builder()
                         .timeStamp(now().toString())
-                        .data(of("user", userDTO))
-                        .message("Profile page opened")
+                        .data(of("user", user))
+                        .message("Profile Retrieved")
+                        .status(OK)
+                        .statusCode(OK.value())
+                        .build());
+    }
+
+    @PatchMapping("/update")
+    public ResponseEntity<HttpResponse> updateUser(@RequestBody @Valid UpdateForm user) throws InterruptedException {
+        TimeUnit.SECONDS.sleep(2);
+        UserDTO updatedUser = userService.updateUserDetails(user);
+        return ResponseEntity.ok().body(
+                HttpResponse.builder()
+                        .timeStamp(now().toString())
+                        .data(of("user", updatedUser))
+                        .message("User updated")
                         .status(OK)
                         .statusCode(OK.value())
                         .build());
@@ -168,7 +180,7 @@ public class UserController {
     public ResponseEntity<HttpResponse> refreshToken(HttpServletRequest request){
         if (isHeaderTokenValid(request)){
             String token = request.getHeader(AUTHORIZATION).substring(TOKEN_PREFIX.length());
-            UserDTO userDTO = userService.getUserByEmail(tokenProvider.getSubject(token, request));
+            UserDTO userDTO = userService.getUserById(tokenProvider.getSubject(token, request));
             return ResponseEntity.ok().body(
                     HttpResponse.builder()
                             .timeStamp(now().toString())
@@ -256,7 +268,6 @@ public class UserController {
             Authentication authentication = authenticationManager.authenticate(new UsernamePasswordAuthenticationToken(email,password));
             return authentication;
         }catch (Exception e ){
-            processError(request,response,e);
             throw new ApiException(e.getMessage());
         }
     }

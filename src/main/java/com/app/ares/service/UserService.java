@@ -2,6 +2,7 @@ package com.app.ares.service;
 
 import com.app.ares.domain.User;
 import com.app.ares.dto.UserDTO;
+import com.app.ares.form.UpdateForm;
 
 public interface UserService {
 
@@ -12,6 +13,7 @@ public interface UserService {
     void resetPassword(String email);
     UserDTO verifyPasswordKey(String key);
     void renewPassword(String key, String password, String confirmation);
-
     UserDTO verifyAccountCode(String code);
+    UserDTO updateUserDetails(UpdateForm user);
+    UserDTO getUserById(Long userId);
 }

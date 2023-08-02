@@ -3,6 +3,7 @@ package com.app.ares.service.implementation;
 import com.app.ares.domain.Role;
 import com.app.ares.domain.User;
 import com.app.ares.dto.UserDTO;
+import com.app.ares.form.UpdateForm;
 import com.app.ares.repository.RoleRepository;
 import com.app.ares.repository.UserRepository;
 import com.app.ares.service.UserService;
@@ -53,6 +54,16 @@ public class UserServiceImpl implements UserService {
     @Override
     public UserDTO verifyAccountCode(String code) {
         return mapToUserDTO(userRepository.verifyAccountCode(code));
+    }
+
+    @Override
+    public UserDTO updateUserDetails(UpdateForm user) {
+        return mapToUserDTO(userRepository.updateUserDetails(user));
+    }
+
+    @Override
+    public UserDTO getUserById(Long userId) {
+        return mapToUserDTO(userRepository.get(userId));
     }
 
     private UserDTO mapToUserDTO(User user){
