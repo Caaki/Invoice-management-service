@@ -9,6 +9,7 @@ import com.app.ares.repository.UserRepository;
 import com.app.ares.service.UserService;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
+import org.springframework.web.multipart.MultipartFile;
 
 import static com.app.ares.dtomapper.UserDTOMapper.toUserDTO;
 
@@ -79,6 +80,16 @@ public class UserServiceImpl implements UserService {
     @Override
     public void updateAccountSettings(Long userId,Boolean enabled, Boolean notLocked) {
         userRepository.updateAccountSettings(userId,enabled, notLocked);
+    }
+
+    @Override
+    public UserDTO toggleMfa(String email) {
+        return mapToUserDTO(userRepository.toggleMfa(email));
+    }
+
+    @Override
+    public void updateImage(UserDTO user, MultipartFile image) {
+        userRepository.updateImage(user, image);
     }
 
     private UserDTO mapToUserDTO(User user){

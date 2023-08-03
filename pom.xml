@@ -105,6 +105,11 @@
 			<version>4.4.0</version>
 		</dependency>
 
+		<dependency>
+			<groupId>nl.basjes.parse.useragent</groupId>
+			<artifactId>yauaa</artifactId>
+			<version>7.21.0</version>
+		</dependency>
 	</dependencies>
 
 

@@ -3,6 +3,7 @@ package com.app.ares.service;
 import com.app.ares.domain.User;
 import com.app.ares.dto.UserDTO;
 import com.app.ares.form.UpdateForm;
+import org.springframework.web.multipart.MultipartFile;
 
 public interface UserService {
 
@@ -19,4 +20,6 @@ public interface UserService {
     void updatePassword(Long id, String currentPassword, String newPassword, String confirmNewPassword);
     void updateUserRole(Long userId, String role);
     void updateAccountSettings(Long userId,Boolean enabled, Boolean notLocked);
+    UserDTO toggleMfa(String email);
+    void updateImage(UserDTO userDTO, MultipartFile image);
 }

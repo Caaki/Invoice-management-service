@@ -6,6 +6,8 @@ import com.app.ares.domain.User;
 import com.app.ares.domain.UserPrincipal;
 import com.app.ares.dto.UserDTO;
 import com.app.ares.dtomapper.UserDTOMapper;
+import com.app.ares.enumeration.EventType;
+import com.app.ares.event.NewUserEvent;
 import com.app.ares.exception.ApiException;
 import com.app.ares.form.*;
 import com.app.ares.service.RoleService;
@@ -15,6 +17,7 @@ import jakarta.servlet.http.HttpServletResponse;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.context.ApplicationEventPublisher;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.access.prepost.PreAuthorize;
@@ -22,9 +25,13 @@ import org.springframework.security.authentication.AuthenticationManager;
 import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
 import org.springframework.security.core.Authentication;
 import org.springframework.web.bind.annotation.*;
+import org.springframework.web.multipart.MultipartFile;
 import org.springframework.web.servlet.support.ServletUriComponentsBuilder;
 
+import java.io.IOException;
 import java.net.URI;
+import java.nio.file.Files;
+import java.nio.file.Paths;
 import java.time.LocalDateTime;
 import java.util.Map;
 import java.util.concurrent.TimeUnit;
@@ -35,6 +42,7 @@ import static java.time.LocalDateTime.now;
 import static java.util.Map.of;
 import static org.springframework.http.HttpHeaders.AUTHORIZATION;
 import static org.springframework.http.HttpStatus.*;
+import static org.springframework.http.MediaType.IMAGE_PNG_VALUE;
 
 @Slf4j
 @RestController
@@ -50,13 +58,13 @@ public class UserController {
     private final AuthenticationManager authenticationManager;
     private final TokenProvider tokenProvider;
     private final RoleService roleService;
+    private final ApplicationEventPublisher publisher;
 
 
 
     @PostMapping("/login")
     public ResponseEntity<HttpResponse> login(@RequestBody @Valid LoginForm loginForm){
-        Authentication authentication = authenticate(loginForm.getEmail(),loginForm.getPassword());
-        UserDTO userDTO = getLoggedInUser(authentication);
+        UserDTO userDTO = authenticate(loginForm.getEmail(),loginForm.getPassword());
         return userDTO.isUsingMfa() ? sendVerificationCode(userDTO): sendResponse(userDTO);
     }
 
@@ -144,8 +152,8 @@ public class UserController {
     }
     @PreAuthorize("hasAuthority('UPDATE:ROLE')")
     @PatchMapping("/update/role")
-    public ResponseEntity<HttpResponse> updateUserRole(Authentication authentication, @RequestBody @Valid RoleForm role) {
-
+    public ResponseEntity<HttpResponse> updateUserRole(Authentication authentication, @RequestBody @Valid RoleForm role) throws InterruptedException {
+            TimeUnit.SECONDS.sleep(1);
             UserDTO userDTO = getAuthenticatedUser(authentication);
             userService.updateUserRole(userDTO.getId(), role.getRoleName());
             return ResponseEntity.ok().body(
@@ -158,8 +166,10 @@ public class UserController {
                             .build());
         }
 
+    @PreAuthorize("hasAuthority('UPDATE:ROLE')")
     @PatchMapping("/update/settings")
-    public ResponseEntity<HttpResponse> updateAccountSettings(Authentication authentication, @RequestBody @Valid SettingsForm form) {
+    public ResponseEntity<HttpResponse> updateAccountSettings(Authentication authentication, @RequestBody @Valid SettingsForm form) throws InterruptedException {
+        TimeUnit.SECONDS.sleep(1);
         UserDTO userDTO = getAuthenticatedUser(authentication);
         userService.updateAccountSettings(userDTO.getId(),form.getEnabled(), form.getNotLocked());
         return ResponseEntity.ok().body(
@@ -172,6 +182,38 @@ public class UserController {
                         .build());
     }
 
+    @PatchMapping("/toggleMfa")
+    public ResponseEntity<HttpResponse> toggleMfa(Authentication authentication) throws InterruptedException {
+        TimeUnit.SECONDS.sleep(1);
+        UserDTO userDTO = userService.toggleMfa(getAuthenticatedUser(authentication).getEmail());
+        return ResponseEntity.ok().body(
+                HttpResponse.builder()
+                        .timeStamp(now().toString())
+                        .data(Map.of("user", userService.getUserById(userDTO.getId()), "roles", roleService.getRoles()))
+                        .message("Multi-Factor Authentication updated")
+                        .status(OK)
+                        .statusCode(OK.value())
+                        .build());
+    }
+
+    @PatchMapping("/update/image")
+    public ResponseEntity<HttpResponse> updateProfileImage(Authentication authentication, @RequestParam("image") MultipartFile image) throws InterruptedException {
+        UserDTO userDTO = getAuthenticatedUser(authentication);
+        userService.updateImage(userDTO, image);
+        return ResponseEntity.ok().body(
+                HttpResponse.builder()
+                        .timeStamp(now().toString())
+                        .data(Map.of("user", userService.getUserById(userDTO.getId()), "roles", roleService.getRoles()))
+                        .message("Profile image updated")
+                        .status(OK)
+                        .statusCode(OK.value())
+                        .build());
+    }
+
+    @GetMapping(value = "/image/{fileName}", produces = IMAGE_PNG_VALUE)
+    public byte[] getProfileImage (@PathVariable("fileName") String fileName) throws IOException {
+        return Files.readAllBytes(Paths.get(System.getProperty("user.home") +"/Downloads/images/" + fileName));
+    }
 
     //Reset password methods
     @GetMapping("/resetpassword/{email}")
@@ -317,11 +359,21 @@ public class UserController {
                         .build());
     }
 
-    private Authentication authenticate(String email, String password) {
+    private UserDTO authenticate(String email, String password) {
         try{
+            if (null!= userService.getUserByEmail(email)){
+                publisher.publishEvent(new NewUserEvent(email, EventType.LOGIN_ATTEMPT));
+            }
             Authentication authentication = authenticationManager.authenticate(new UsernamePasswordAuthenticationToken(email,password));
-            return authentication;
+            UserDTO loggedInUSer = getLoggedInUser(authentication);
+            if (!loggedInUSer.isUsingMfa()){
+                publisher.publishEvent(new NewUserEvent(email, EventType.LOGIN_ATTEMPT_SUCCESS));
+
+            }
+            return loggedInUSer;
         }catch (Exception e ){
+            publisher.publishEvent(new NewUserEvent(email, EventType.LOGIN_ATTEMPT_FAILURE));
+            processError(request,response,e);
             throw new ApiException(e.getMessage());
         }
     }

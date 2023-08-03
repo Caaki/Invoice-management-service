@@ -3,6 +3,7 @@ package com.app.ares.repository;
 import com.app.ares.domain.User;
 import com.app.ares.dto.UserDTO;
 import com.app.ares.form.UpdateForm;
+import org.springframework.web.multipart.MultipartFile;
 
 import java.util.Collection;
 
@@ -23,4 +24,6 @@ public interface UserRepository <T extends User>{
     T updateUserDetails(UpdateForm user);
     void updatePassword(Long id, String currentPassword, String newPassword, String confirmNewPassword);
     void updateAccountSettings(Long userId,Boolean enabled, Boolean notLocked);
+    User toggleMfa(String email);
+    void updateImage(UserDTO user, MultipartFile image);
 }

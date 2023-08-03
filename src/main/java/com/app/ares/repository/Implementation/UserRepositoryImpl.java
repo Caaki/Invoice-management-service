@@ -23,8 +23,13 @@ import org.springframework.security.core.userdetails.UserDetailsService;
 import org.springframework.security.core.userdetails.UsernameNotFoundException;
 import org.springframework.security.crypto.bcrypt.BCryptPasswordEncoder;
 import org.springframework.stereotype.Repository;
+import org.springframework.web.multipart.MultipartFile;
 import org.springframework.web.servlet.support.ServletUriComponentsBuilder;
 
+import java.io.IOException;
+import java.nio.file.Files;
+import java.nio.file.Path;
+import java.nio.file.Paths;
 import java.time.LocalDateTime;
 import java.time.format.DateTimeFormatter;
 import java.util.Collection;
@@ -36,9 +41,11 @@ import static com.app.ares.enumeration.VerificationType.ACCOUNT;
 import static com.app.ares.enumeration.VerificationType.PASSWORD;
 import static com.app.ares.query.UserQuery.*;
 import static com.app.ares.utils.SmsUtils.sendSMS;
+import static java.nio.file.StandardCopyOption.REPLACE_EXISTING;
 import static java.util.Map.of;
 import static java.util.Objects.requireNonNull;
 import static org.apache.commons.lang3.RandomStringUtils.randomAlphabetic;
+import static org.apache.commons.lang3.StringUtils.isBlank;
 
 @Repository
 @RequiredArgsConstructor
@@ -194,41 +201,6 @@ public class UserRepositoryImpl implements UserRepository<User>, UserDetailsServ
         }
     }
 
-    private Integer getEmailCount(String email) {
-        return jdbcTemplate.queryForObject(
-                COUNT_USER_EMAIL_QUERY,
-                of("email", email), Integer.class);
-    }
-
-    private SqlParameterSource getSqlParameterSource(User user) {
-
-        return new MapSqlParameterSource()
-                .addValue("firstName", user.getFirstName())
-                .addValue("lastName", user.getLastName())
-                .addValue("email", user.getEmail())
-                .addValue("password", passwordEncoder.encode(user.getPassword()));
-    }
-
-    private SqlParameterSource getSqlParameterSource(UpdateForm user) {
-
-        return new MapSqlParameterSource()
-                .addValue("id",user.getId())
-                .addValue("firstName", user.getFirstName())
-                .addValue("lastName", user.getLastName())
-                .addValue("email", user.getEmail())
-                //.addValue("password", passwordEncoder.encode(user.getPassword()))
-                .addValue("address",user.getAddress())
-                .addValue("phone",user.getPhone())
-                .addValue("title",user.getTitle())
-                .addValue("bio",user.getBio())
-                ;
-
-    }
-
-    private String getVerificationUrl(String key, String type){
-        return ServletUriComponentsBuilder.fromCurrentContextPath()
-                .path("/user/verify/" + type + "/" + key).toUriString();
-    }
     
 
     @Override
@@ -366,6 +338,64 @@ public class UserRepositoryImpl implements UserRepository<User>, UserDetailsServ
         }
     }
 
+    @Override
+    public User toggleMfa(String email) {
+        User user = getUserByEmail(email);
+        if (isBlank(user.getPhone())){
+            throw new ApiException("You need to add a phone number to enable Multi-factor authentication");
+
+        }else{
+            user.setUsingMfa(!user.isUsingMfa());
+            try {
+                jdbcTemplate.update(
+                        TOGGLE_USER_MFA_QUERY, of(
+                                "email",email,
+                                "isUsingMfa",user.isUsingMfa()));
+                return user;
+            }
+
+            catch (Exception exception) {
+                log.error(exception.getMessage());
+                throw new ApiException("Unable to update Multi-Factor authentication");
+            }
+        }
+    }
+
+    @Override
+    public void updateImage(UserDTO user, MultipartFile image) {
+        String imageUrl = setUserImageUrl(user.getEmail());
+        saveImage(user.getEmail(), image);
+        jdbcTemplate.update(UPDATE_USER_IMAGE_QUERY,of(
+                "imageUrl", imageUrl,
+                "userId",user.getId()));
+    }
+
+    private void saveImage(String email, MultipartFile image) {
+        Path fileStorageLocation = Paths.get(System.getProperty("user.home") + "/Downloads/images/").toAbsolutePath();
+        if(!Files.exists(fileStorageLocation)){
+            try{
+                Files.createDirectories(fileStorageLocation);
+            } catch (IOException e) {
+                log.error(e.getMessage());
+                throw new ApiException("Unable to create directory to save image");
+            }
+            log.info("Created directories: "+fileStorageLocation);
+        }else{
+            try {
+                Files.copy(image.getInputStream(), fileStorageLocation.resolve(email +".png"), REPLACE_EXISTING);
+            } catch (IOException e) {
+                log.error(e.getMessage());
+                throw new ApiException(e.getMessage());
+            }
+            log.info("File saved in: {} folder", fileStorageLocation);
+        }
+    }
+
+    private String setUserImageUrl(String email) {
+        return ServletUriComponentsBuilder.fromCurrentContextPath()
+                .path("/user/image/" + email + "." + "png").toUriString();
+    }
+
 
     private boolean isLinkExpired(String key, VerificationType password) {
 
@@ -391,6 +421,43 @@ public class UserRepositoryImpl implements UserRepository<User>, UserDetailsServ
         } catch (Exception exception) {
             throw new ApiException("An error occurred. Please try again.");
         }
+    }
+
+    private String getVerificationUrl(String key, String type){
+        return ServletUriComponentsBuilder.fromCurrentContextPath()
+                .path("/user/verify/" + type + "/" + key).toUriString();
+    }
+
+
+    private Integer getEmailCount(String email) {
+        return jdbcTemplate.queryForObject(
+                COUNT_USER_EMAIL_QUERY,
+                of("email", email), Integer.class);
+    }
+
+    private SqlParameterSource getSqlParameterSource(User user) {
+
+        return new MapSqlParameterSource()
+                .addValue("firstName", user.getFirstName())
+                .addValue("lastName", user.getLastName())
+                .addValue("email", user.getEmail())
+                .addValue("password", passwordEncoder.encode(user.getPassword()));
+    }
+
+    private SqlParameterSource getSqlParameterSource(UpdateForm user) {
+
+        return new MapSqlParameterSource()
+                .addValue("id",user.getId())
+                .addValue("firstName", user.getFirstName())
+                .addValue("lastName", user.getLastName())
+                .addValue("email", user.getEmail())
+                //.addValue("password", passwordEncoder.encode(user.getPassword()))
+                .addValue("address",user.getAddress())
+                .addValue("phone",user.getPhone())
+                .addValue("title",user.getTitle())
+                .addValue("bio",user.getBio())
+                ;
+
     }
     
     
