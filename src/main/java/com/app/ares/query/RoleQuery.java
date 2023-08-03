@@ -16,4 +16,14 @@ public class RoleQuery {
             "JOIN UserRoles ur ON ur.role_id = r.id " +
             "JOIN Users u ON u.id = ur.user_id " +
             "WHERE u.id = :id";
+
+
+    public static final String SLECT_ROLES_QUERY =
+            "SELECT * FROM Roles ORDER BY id";
+
+    public static final String UPDATE_USER_ROLE_QUERY =
+            "UPDATE UserRoles " +
+            "SET role_id =:roleId " +
+            "WHERE user_id=:userId";
+
 }

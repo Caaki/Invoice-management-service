@@ -7,8 +7,7 @@ import com.app.ares.domain.UserPrincipal;
 import com.app.ares.dto.UserDTO;
 import com.app.ares.dtomapper.UserDTOMapper;
 import com.app.ares.exception.ApiException;
-import com.app.ares.form.LoginForm;
-import com.app.ares.form.UpdateForm;
+import com.app.ares.form.*;
 import com.app.ares.service.RoleService;
 import com.app.ares.service.UserService;
 import jakarta.servlet.http.HttpServletRequest;
@@ -18,6 +17,7 @@ import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
+import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.security.authentication.AuthenticationManager;
 import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
 import org.springframework.security.core.Authentication;
@@ -93,11 +93,12 @@ public class UserController {
 
     @GetMapping("/profile")
     public ResponseEntity<HttpResponse> profile(Authentication authentication) {
+
         UserDTO user = userService.getUserByEmail(getAuthenticatedUser(authentication).getEmail());
         return ResponseEntity.ok().body(
                 HttpResponse.builder()
                         .timeStamp(now().toString())
-                        .data(of("user", user))
+                        .data(of("user", user,"roles", roleService.getRoles()))
                         .message("Profile Retrieved")
                         .status(OK)
                         .statusCode(OK.value())
@@ -106,17 +107,71 @@ public class UserController {
 
     @PatchMapping("/update")
     public ResponseEntity<HttpResponse> updateUser(@RequestBody @Valid UpdateForm user) throws InterruptedException {
-        TimeUnit.SECONDS.sleep(2);
-        UserDTO updatedUser = userService.updateUserDetails(user);
+        TimeUnit.SECONDS.sleep(1);
+        UserDTO testUserPermision = userService.getUserById(user.getId());
+        if (!testUserPermision.getPermissions().contains("UPDATE:USER")) {
+            return new ResponseEntity<>(
+                    HttpResponse.builder()
+                            .timeStamp(now().toString())
+                            .reason("You need permissions to perform this action")
+                            .status(BAD_REQUEST)
+                            .statusCode(BAD_REQUEST.value())
+                            .build(), BAD_REQUEST);
+        } else {
+            UserDTO updatedUser = userService.updateUserDetails(user);
+            return ResponseEntity.ok().body(
+                    HttpResponse.builder()
+                            .timeStamp(now().toString())
+                            .data(of("user", updatedUser))
+                            .message("User updated")
+                            .status(OK)
+                            .statusCode(OK.value())
+                            .build());
+        }
+    }
+
+    @PatchMapping("/update/password")
+    public ResponseEntity<HttpResponse> updatePassword(Authentication authentication, @RequestBody @Valid UpdatePasswordForm form){
+        UserDTO userDTO = getAuthenticatedUser(authentication);
+        userService.updatePassword(userDTO.getId(),form.getCurrentPassword(),form.getNewPassword(),form.getConfirmNewPassword());
         return ResponseEntity.ok().body(
                 HttpResponse.builder()
                         .timeStamp(now().toString())
-                        .data(of("user", updatedUser))
-                        .message("User updated")
+                        .message("Password updated successfully")
                         .status(OK)
                         .statusCode(OK.value())
                         .build());
     }
+    @PreAuthorize("hasAuthority('UPDATE:ROLE')")
+    @PatchMapping("/update/role")
+    public ResponseEntity<HttpResponse> updateUserRole(Authentication authentication, @RequestBody @Valid RoleForm role) {
+
+            UserDTO userDTO = getAuthenticatedUser(authentication);
+            userService.updateUserRole(userDTO.getId(), role.getRoleName());
+            return ResponseEntity.ok().body(
+                    HttpResponse.builder()
+                            .timeStamp(now().toString())
+                            .data(Map.of("user", userService.getUserById(userDTO.getId()), "roles", roleService.getRoles()))
+                            .message("Role updated successfully")
+                            .status(OK)
+                            .statusCode(OK.value())
+                            .build());
+        }
+
+    @PatchMapping("/update/settings")
+    public ResponseEntity<HttpResponse> updateAccountSettings(Authentication authentication, @RequestBody @Valid SettingsForm form) {
+        UserDTO userDTO = getAuthenticatedUser(authentication);
+        userService.updateAccountSettings(userDTO.getId(),form.getEnabled(), form.getNotLocked());
+        return ResponseEntity.ok().body(
+                HttpResponse.builder()
+                        .timeStamp(now().toString())
+                        .data(Map.of("user", userService.getUserById(userDTO.getId()), "roles", roleService.getRoles()))
+                        .message("Account settings updated successfully")
+                        .status(OK)
+                        .statusCode(OK.value())
+                        .build());
+    }
+
 
     //Reset password methods
     @GetMapping("/resetpassword/{email}")
@@ -164,7 +219,7 @@ public class UserController {
 
     //Verify account
     @GetMapping("/verify/account/{code}")
-    public ResponseEntity<HttpResponse> verifyA(@PathVariable("code") String code){
+    public ResponseEntity<HttpResponse> verifyAccount(@PathVariable("code") String code){
         return ResponseEntity.ok().body(
                 HttpResponse.builder()
                         .timeStamp(now().toString())
@@ -202,7 +257,6 @@ public class UserController {
                             .build(), BAD_REQUEST);
         }
     }
-
 
     @RequestMapping("/error")
     public ResponseEntity<HttpResponse> handleError(HttpServletRequest request){

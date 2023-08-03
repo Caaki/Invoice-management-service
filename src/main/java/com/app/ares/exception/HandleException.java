@@ -21,8 +21,7 @@ import java.time.LocalDateTime;
 import java.util.List;
 import java.util.stream.Collectors;
 
-import static org.springframework.http.HttpStatus.BAD_REQUEST;
-import static org.springframework.http.HttpStatus.FORBIDDEN;
+import static org.springframework.http.HttpStatus.*;
 
 @Slf4j
 @RestControllerAdvice
@@ -117,9 +116,9 @@ public class HandleException extends ResponseEntityExceptionHandler implements E
                         .timeStamp(LocalDateTime.now().toString())
                         .reason(exception.getMessage())
                         .developerMessage(exception.getMessage())
-                        .status(HttpStatus.resolve(BAD_REQUEST.value()))
-                        .statusCode(BAD_REQUEST.value())
-                        .build(), BAD_REQUEST);
+                        .status(HttpStatus.resolve(INTERNAL_SERVER_ERROR.value()))
+                        .statusCode(INTERNAL_SERVER_ERROR.value())
+                        .build(), INTERNAL_SERVER_ERROR);
     }
 
 

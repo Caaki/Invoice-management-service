@@ -28,11 +28,13 @@ public class ExceptionUtils {
                 exception instanceof DisabledException ||
                 exception instanceof LockedException ||
                 exception instanceof InvalidClaimException ||
-                exception instanceof BadCredentialsException ||
-                exception instanceof TokenExpiredException){
+                exception instanceof BadCredentialsException){
             HttpResponse httpResponse = getHttpResponse(response,exception.getMessage(),BAD_REQUEST);
             writeResponse(response, httpResponse);
 
+        }else if (exception instanceof TokenExpiredException){
+            HttpResponse httpResponse = getHttpResponse(response,"Token has expired!",UNAUTHORIZED);
+            writeResponse(response, httpResponse);
         }
         else{
             HttpResponse httpResponse = getHttpResponse(

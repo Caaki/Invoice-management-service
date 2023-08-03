@@ -11,8 +11,9 @@ import lombok.Setter;
 @Setter
 public class UpdateForm {
 
-    private Long id;
     @NotNull(message = "ID cannot be null or empty")
+    private Long id;
+    @NotEmpty(message = "First name cannot be empty")
     private String firstName;
     @NotEmpty(message = "Last name cannot be empty")
     private String lastName;

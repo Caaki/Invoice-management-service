@@ -94,8 +94,16 @@ public class UserQuery {
             "SELECT * FROM Users " +
                     "WHERE id = :id";
 
+    public static final String UPDATE_USER_PASSWORD_BY_ID_QUERY =
+            "UPDATE Users SET " +
+                    "password = :password " +
+                    "WHERE id =:userId";
 
 
+    public static final String UPDATE_USER_SETTINGS_QUERY =
+            "UPDATE Users " +
+                    "SET enabled = :enabled, non_locked = :notLocked " +
+                    "WHERE id = :userId";
 
 }
 

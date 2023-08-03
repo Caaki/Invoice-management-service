@@ -7,7 +7,7 @@ import java.util.Collection;
 public interface RoleRepository <T extends Role>{
 
     T create(T user);
-    Collection<T> list (int page, int pageSize);
+    Collection<T> list ();
     T get(Long id);
     T update(T user);
     Boolean delete(Long id);
