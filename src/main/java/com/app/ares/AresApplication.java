@@ -12,7 +12,7 @@ import org.springframework.web.filter.CorsFilter;
 import java.util.Arrays;
 import java.util.List;
 
-@SpringBootApplication //(exclude = {SecurityAutoConfiguration.class})
+@SpringBootApplication
 public class AresApplication {
 	private static final int STRENGHT = 12;
 	public static void main(String[] args) {

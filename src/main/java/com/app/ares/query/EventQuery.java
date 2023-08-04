@@ -8,7 +8,7 @@ public class EventQuery {
             "JOIN UserEvents uev ON ev.id = uev.event_id " +
             "JOIN Users u ON u.id = uev.user_id " +
             "WHERE u.id = :userId " +
-            "ORDER BY uev.created_at DESC"; //LIMIT 10";
+            "ORDER BY uev.created_at DESC LIMIT 10";
 
     public static final String INSERT_EVENT_BY_USER_EMAIL_QUERY =
             "INSERT INTO UserEvents (user_id, event_id, device, ip_address) " +

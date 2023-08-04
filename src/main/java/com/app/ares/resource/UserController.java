@@ -10,6 +10,7 @@ import com.app.ares.enumeration.EventType;
 import com.app.ares.event.NewUserEvent;
 import com.app.ares.exception.ApiException;
 import com.app.ares.form.*;
+import com.app.ares.service.EventService;
 import com.app.ares.service.RoleService;
 import com.app.ares.service.UserService;
 import jakarta.servlet.http.HttpServletRequest;
@@ -59,6 +60,7 @@ public class UserController {
     private final TokenProvider tokenProvider;
     private final RoleService roleService;
     private final ApplicationEventPublisher publisher;
+    private final EventService eventService;
 
 
 
@@ -86,6 +88,7 @@ public class UserController {
     @GetMapping("/verify/code/{email}/{code}")
     public ResponseEntity<HttpResponse> verifyCode(@PathVariable("email") String email, @PathVariable("code") String code){
         UserDTO userDTO = userService.verifyCode(email,code);
+        publisher.publishEvent(new NewUserEvent(userDTO.getEmail(),EventType.LOGIN_ATTEMPT_SUCCESS));
         return ResponseEntity.ok().body(
                 HttpResponse.builder()
                         .timeStamp(now().toString())
@@ -106,60 +109,53 @@ public class UserController {
         return ResponseEntity.ok().body(
                 HttpResponse.builder()
                         .timeStamp(now().toString())
-                        .data(of("user", user,"roles", roleService.getRoles()))
+                        .data(of("user", user,"events",eventService.getEventByUserId(user.getId()) ,"roles", roleService.getRoles()))
                         .message("Profile Retrieved")
                         .status(OK)
                         .statusCode(OK.value())
                         .build());
     }
 
+    @PreAuthorize("hasAuthority('UPDATE:USER')")
     @PatchMapping("/update")
-    public ResponseEntity<HttpResponse> updateUser(@RequestBody @Valid UpdateForm user) throws InterruptedException {
-        TimeUnit.SECONDS.sleep(1);
-        UserDTO testUserPermision = userService.getUserById(user.getId());
-        if (!testUserPermision.getPermissions().contains("UPDATE:USER")) {
-            return new ResponseEntity<>(
-                    HttpResponse.builder()
-                            .timeStamp(now().toString())
-                            .reason("You need permissions to perform this action")
-                            .status(BAD_REQUEST)
-                            .statusCode(BAD_REQUEST.value())
-                            .build(), BAD_REQUEST);
-        } else {
-            UserDTO updatedUser = userService.updateUserDetails(user);
-            return ResponseEntity.ok().body(
-                    HttpResponse.builder()
-                            .timeStamp(now().toString())
-                            .data(of("user", updatedUser))
-                            .message("User updated")
-                            .status(OK)
-                            .statusCode(OK.value())
-                            .build());
-        }
+    public ResponseEntity<HttpResponse> updateUser(@RequestBody @Valid UpdateForm user) {
+        UserDTO updatedUser = userService.updateUserDetails(user);
+        publisher.publishEvent(new NewUserEvent(updatedUser.getEmail(),EventType.PROFILE_UPDATE));
+        return ResponseEntity.ok().body(
+                HttpResponse.builder()
+                        .timeStamp(now().toString())
+                        .data(of("user", updatedUser,"events",eventService.getEventByUserId(user.getId()) ,"roles", roleService.getRoles()))
+                        .message("User updated")
+                        .status(OK)
+                        .statusCode(OK.value())
+                        .build());
     }
+
 
     @PatchMapping("/update/password")
     public ResponseEntity<HttpResponse> updatePassword(Authentication authentication, @RequestBody @Valid UpdatePasswordForm form){
         UserDTO userDTO = getAuthenticatedUser(authentication);
         userService.updatePassword(userDTO.getId(),form.getCurrentPassword(),form.getNewPassword(),form.getConfirmNewPassword());
+        publisher.publishEvent(new NewUserEvent(userDTO.getEmail(),EventType.PASSWORD_UPDATE));
         return ResponseEntity.ok().body(
                 HttpResponse.builder()
                         .timeStamp(now().toString())
                         .message("Password updated successfully")
+                        .data(Map.of("user", userDTO,"events", eventService.getEventByUserId(userDTO.getId()),  "roles", roleService.getRoles()))
                         .status(OK)
                         .statusCode(OK.value())
                         .build());
     }
     @PreAuthorize("hasAuthority('UPDATE:ROLE')")
     @PatchMapping("/update/role")
-    public ResponseEntity<HttpResponse> updateUserRole(Authentication authentication, @RequestBody @Valid RoleForm role) throws InterruptedException {
-            TimeUnit.SECONDS.sleep(1);
+    public ResponseEntity<HttpResponse> updateUserRole(Authentication authentication, @RequestBody @Valid RoleForm role) {
             UserDTO userDTO = getAuthenticatedUser(authentication);
             userService.updateUserRole(userDTO.getId(), role.getRoleName());
+            publisher.publishEvent(new NewUserEvent(userDTO.getEmail(),EventType.ROLE_UPDATE));
             return ResponseEntity.ok().body(
                     HttpResponse.builder()
                             .timeStamp(now().toString())
-                            .data(Map.of("user", userService.getUserById(userDTO.getId()), "roles", roleService.getRoles()))
+                            .data(Map.of("user", userService.getUserById(userDTO.getId()),"events", eventService.getEventByUserId(userDTO.getId()), "roles", roleService.getRoles()))
                             .message("Role updated successfully")
                             .status(OK)
                             .statusCode(OK.value())
@@ -168,14 +164,14 @@ public class UserController {
 
     @PreAuthorize("hasAuthority('UPDATE:ROLE')")
     @PatchMapping("/update/settings")
-    public ResponseEntity<HttpResponse> updateAccountSettings(Authentication authentication, @RequestBody @Valid SettingsForm form) throws InterruptedException {
-        TimeUnit.SECONDS.sleep(1);
+    public ResponseEntity<HttpResponse> updateAccountSettings(Authentication authentication, @RequestBody @Valid SettingsForm form)  {
         UserDTO userDTO = getAuthenticatedUser(authentication);
         userService.updateAccountSettings(userDTO.getId(),form.getEnabled(), form.getNotLocked());
+        publisher.publishEvent(new NewUserEvent(userDTO.getEmail(),EventType.ACCOUNT_SETTINGS_UPDATE));
         return ResponseEntity.ok().body(
                 HttpResponse.builder()
                         .timeStamp(now().toString())
-                        .data(Map.of("user", userService.getUserById(userDTO.getId()), "roles", roleService.getRoles()))
+                        .data(Map.of("user", userService.getUserById(userDTO.getId()), "events",eventService.getEventByUserId(userDTO.getId()), "roles", roleService.getRoles()))
                         .message("Account settings updated successfully")
                         .status(OK)
                         .statusCode(OK.value())
@@ -184,12 +180,12 @@ public class UserController {
 
     @PatchMapping("/toggleMfa")
     public ResponseEntity<HttpResponse> toggleMfa(Authentication authentication) throws InterruptedException {
-        TimeUnit.SECONDS.sleep(1);
         UserDTO userDTO = userService.toggleMfa(getAuthenticatedUser(authentication).getEmail());
+        publisher.publishEvent(new NewUserEvent(userDTO.getEmail(),EventType.MFA_UPDATE));
         return ResponseEntity.ok().body(
                 HttpResponse.builder()
                         .timeStamp(now().toString())
-                        .data(Map.of("user", userService.getUserById(userDTO.getId()), "roles", roleService.getRoles()))
+                        .data(Map.of("user", userService.getUserById(userDTO.getId()),"events",eventService.getEventByUserId(userDTO.getId()), "roles", roleService.getRoles()))
                         .message("Multi-Factor Authentication updated")
                         .status(OK)
                         .statusCode(OK.value())
@@ -197,13 +193,14 @@ public class UserController {
     }
 
     @PatchMapping("/update/image")
-    public ResponseEntity<HttpResponse> updateProfileImage(Authentication authentication, @RequestParam("image") MultipartFile image) throws InterruptedException {
+    public ResponseEntity<HttpResponse> updateProfileImage(Authentication authentication, @RequestParam("image") MultipartFile image)  {
         UserDTO userDTO = getAuthenticatedUser(authentication);
         userService.updateImage(userDTO, image);
+        publisher.publishEvent(new NewUserEvent(userDTO.getEmail(),EventType.PROFILE_PICTURE_UPDATE));
         return ResponseEntity.ok().body(
                 HttpResponse.builder()
                         .timeStamp(now().toString())
-                        .data(Map.of("user", userService.getUserById(userDTO.getId()), "roles", roleService.getRoles()))
+                        .data(Map.of("user", userService.getUserById(userDTO.getId()),"events",eventService.getEventByUserId(userDTO.getId()), "roles", roleService.getRoles()))
                         .message("Profile image updated")
                         .status(OK)
                         .statusCode(OK.value())
