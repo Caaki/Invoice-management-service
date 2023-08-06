@@ -2,6 +2,7 @@ package com.app.ares.service;
 
 import com.app.ares.domain.Customer;
 import com.app.ares.domain.Invoice;
+import com.app.ares.domain.Statistics;
 import org.springframework.data.domain.Page;
 
 public interface CustomerService {
@@ -19,4 +20,6 @@ public interface CustomerService {
     Page<Invoice> getInvoices(int page, int size);
     void addInvoiceToCustomer(Long id, Invoice invoiceId);
     Invoice getInvoice(Long id);
+
+    Statistics getStatistics();
 }

@@ -2,8 +2,10 @@ package com.app.ares.service.implementation;
 
 import com.app.ares.domain.Customer;
 import com.app.ares.domain.Invoice;
+import com.app.ares.domain.Statistics;
 import com.app.ares.repository.CustomerRepository;
 import com.app.ares.repository.InvoiceRepository;
+import com.app.ares.rowmapper.StatisticsRowMapper;
 import com.app.ares.service.CustomerService;
 import jakarta.transaction.Transactional;
 import lombok.RequiredArgsConstructor;
@@ -12,10 +14,13 @@ import org.apache.commons.lang3.RandomStringUtils;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.PageRequest;
 import org.springframework.data.domain.Pageable;
+import org.springframework.jdbc.core.namedparam.NamedParameterJdbcTemplate;
 import org.springframework.stereotype.Service;
 
 import java.util.Date;
 import java.util.Map;
+
+import static com.app.ares.query.CustomerQuery.STATISTICS_QUERY;
 
 @Service
 @Transactional
@@ -24,6 +29,8 @@ import java.util.Map;
 public class CustomerServiceImpl implements CustomerService {
     private final CustomerRepository customerRepository;
     private final InvoiceRepository invoiceRepository;
+    private final NamedParameterJdbcTemplate jdbcTemplate;
+
     @Override
     public Customer createCustomer(Customer customer) {
         customer.setCreatedAt(new Date());
@@ -80,6 +87,11 @@ public class CustomerServiceImpl implements CustomerService {
     public Invoice getInvoice(Long id) {
         return invoiceRepository.findById(id)
                 .orElseThrow(() -> new RuntimeException("No invoice found with given id"));
+    }
+
+    @Override
+    public Statistics getStatistics() {
+        return jdbcTemplate.queryForObject(STATISTICS_QUERY, Map.of(), new StatisticsRowMapper());
     }
 
 

@@ -18,6 +18,7 @@ import java.net.URI;
 import java.time.LocalDateTime;
 import java.util.Map;
 import java.util.Optional;
+import java.util.concurrent.TimeUnit;
 
 import static org.springframework.http.HttpStatus.OK;
 
@@ -36,7 +37,8 @@ public class CustomerController {
                 HttpResponse.builder()
                         .timeStamp(LocalDateTime.now().toString())
                         .data(Map.of("user", userService.getUserByEmail(user.getEmail()),
-                                "page", customerService.getCustomers(page.orElse(0), size.orElse(10))))
+                                "page", customerService.getCustomers(page.orElse(0), size.orElse(10)),
+                                "statistics", customerService.getStatistics()))
                         .message("Customers retrieved")
                         .status(OK)
                         .statusCode(OK.value())
@@ -45,7 +47,8 @@ public class CustomerController {
 
     @PostMapping("/create")
     public ResponseEntity<HttpResponse> createCustomer(
-            @AuthenticationPrincipal UserDTO user, @RequestBody Customer customer){
+            @AuthenticationPrincipal UserDTO user, @RequestBody Customer customer) throws InterruptedException {
+        TimeUnit.SECONDS.sleep(1);
         return ResponseEntity.created(URI.create(""))
                 .body(
                 HttpResponse.builder()
