@@ -4,11 +4,16 @@ import com.app.ares.domain.Customer;
 import com.app.ares.domain.HttpResponse;
 import com.app.ares.domain.Invoice;
 import com.app.ares.dto.UserDTO;
+import com.app.ares.report.CustomerReport;
 import com.app.ares.service.CustomerService;
 import com.app.ares.service.UserService;
+import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.core.io.Resource;
+import org.springframework.http.HttpHeaders;
 import org.springframework.http.HttpStatus;
+import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.core.Authentication;
 import org.springframework.security.core.annotation.AuthenticationPrincipal;
@@ -16,6 +21,8 @@ import org.springframework.web.bind.annotation.*;
 
 import java.net.URI;
 import java.time.LocalDateTime;
+import java.util.ArrayList;
+import java.util.List;
 import java.util.Map;
 import java.util.Optional;
 import java.util.concurrent.TimeUnit;
@@ -47,7 +54,7 @@ public class CustomerController {
 
     @PostMapping("/create")
     public ResponseEntity<HttpResponse> createCustomer(
-            @AuthenticationPrincipal UserDTO user, @RequestBody Customer customer) throws InterruptedException {
+            @AuthenticationPrincipal UserDTO user, @RequestBody @Valid Customer customer) throws InterruptedException {
         TimeUnit.SECONDS.sleep(1);
         return ResponseEntity.created(URI.create(""))
                 .body(
@@ -70,7 +77,7 @@ public class CustomerController {
                 HttpResponse.builder()
                         .timeStamp(LocalDateTime.now().toString())
                         .data(Map.of("user", user,
-                                "customers", customerService.getCustomer(id)))
+                                "customer", customerService.getCustomer(id)))
                         .message("Customer retrieved")
                         .status(OK)
                         .statusCode(OK.value())
@@ -88,7 +95,7 @@ public class CustomerController {
                 HttpResponse.builder()
                         .timeStamp(LocalDateTime.now().toString())
                         .data(Map.of("user", user,
-                                "customers", customerService.searchCustomers(name.orElse(""),page.orElse(0),size.orElse(10))))
+                                "page", customerService.searchCustomers(name.orElse(""),page.orElse(0),size.orElse(10))))
                         .message("Customers retrieved")
                         .status(OK)
                         .statusCode(OK.value())
@@ -96,13 +103,12 @@ public class CustomerController {
     }
 
     @PutMapping("/update")
-    public ResponseEntity<HttpResponse> updateCustomer(@AuthenticationPrincipal UserDTO user, @RequestBody Customer customer){
-
+    public ResponseEntity<HttpResponse> updateCustomer(@AuthenticationPrincipal UserDTO user, @RequestBody Customer customer) throws InterruptedException {
         return ResponseEntity.ok(
                 HttpResponse.builder()
                         .timeStamp(LocalDateTime.now().toString())
                         .data(Map.of("user", user,
-                                "customers", customerService.updateCustomer(customer)))
+                                "customer", customerService.updateCustomer(customer)))
                         .message("Customer updated")
                         .status(OK)
                         .statusCode(OK.value())
@@ -124,7 +130,7 @@ public class CustomerController {
                         .build());
     }
 
-    @PostMapping("/invoice/new")
+    @GetMapping("/invoice/new")
     public ResponseEntity<HttpResponse> newInvoice(@AuthenticationPrincipal UserDTO user){
 
         return ResponseEntity.ok(
@@ -147,7 +153,7 @@ public class CustomerController {
                 HttpResponse.builder()
                         .timeStamp(LocalDateTime.now().toString())
                         .data(Map.of("user", user,
-                                "invoices", customerService.getInvoices(page.orElse(0),size.orElse(10))))
+                                "page", customerService.getInvoices(page.orElse(0),size.orElse(10))))
                         .message("Invoices retrieved")
                         .status(OK)
                         .statusCode(OK.value())
@@ -158,19 +164,21 @@ public class CustomerController {
     public ResponseEntity<HttpResponse> getInvoice(
             @AuthenticationPrincipal UserDTO user,
             @RequestParam Optional<Integer> page, @PathVariable("id") Long id){
+        Invoice invoice = customerService.getInvoice(id);
 
         return ResponseEntity.ok(
                 HttpResponse.builder()
                         .timeStamp(LocalDateTime.now().toString())
                         .data(Map.of("user", user,
-                                "invoice", customerService.getInvoice(id)))
+                                "invoice", invoice,
+                                "customer", invoice.getCustomer()))
                         .message("Customer retrieved")
                         .status(OK)
                         .statusCode(OK.value())
                         .build());
     }
 
-    @PutMapping("/invoice/addtocustomer/{id}")
+    @PostMapping("/invoice/addtocustomer/{id}")
     public ResponseEntity<HttpResponse> addInvoiceToCustomer(
             @AuthenticationPrincipal UserDTO user,
             @PathVariable("id") Long id,
@@ -182,14 +190,26 @@ public class CustomerController {
                         .timeStamp(LocalDateTime.now().toString())
                         .data(Map.of("user", user,
                                 "customers", customerService.getCustomers()))
-                        .message("Customers retrieved")
+                        .message(String.format("Invoice added to customer with ID: %s",id))
                         .status(OK)
                         .statusCode(OK.value())
                         .build());
     }
 
+    @GetMapping("/download/report")
+    public ResponseEntity<Resource> downloadReport(){
+        List<Customer> customers = new ArrayList<>();
+        customerService.getCustomers().iterator().forEachRemaining(customers::add);
 
+        CustomerReport report = new CustomerReport(customers);
+        HttpHeaders headers = new HttpHeaders();
+        headers.add("File-Name", "customer-report.xlsx");
+        headers.add(HttpHeaders.CONTENT_DISPOSITION, "attachment;File-Name=customer-report.xlsx");
 
-
+        return ResponseEntity.ok().contentType(
+                MediaType.parseMediaType("application/vnd.ms-excel"))
+                .headers(headers).body(
+                        report.export());
+    }
 
 }
