@@ -19,6 +19,7 @@ import org.springframework.security.core.Authentication;
 import org.springframework.security.core.annotation.AuthenticationPrincipal;
 import org.springframework.web.bind.annotation.*;
 
+import java.io.IOException;
 import java.net.URI;
 import java.time.LocalDateTime;
 import java.util.ArrayList;
@@ -197,13 +198,14 @@ public class CustomerController {
     }
 
     @GetMapping("/download/report")
-    public ResponseEntity<Resource> downloadReport(){
+    public ResponseEntity<Resource> downloadReport() throws IOException {
         List<Customer> customers = new ArrayList<>();
         customerService.getCustomers().iterator().forEachRemaining(customers::add);
 
         CustomerReport report = new CustomerReport(customers);
         HttpHeaders headers = new HttpHeaders();
         headers.add("File-Name", "customer-report.xlsx");
+        headers.add("Content-Length", String.valueOf(report.export().contentLength()));
         headers.add(HttpHeaders.CONTENT_DISPOSITION, "attachment;File-Name=customer-report.xlsx");
 
         return ResponseEntity.ok().contentType(

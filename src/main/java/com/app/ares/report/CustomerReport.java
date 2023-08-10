@@ -87,6 +87,7 @@ public class CustomerReport {
             }
 
             workbook.write(out);
+
             return new InputStreamResource(new ByteArrayInputStream(out.toByteArray()));
         }catch (Exception e){
             log.error(e.getMessage());
