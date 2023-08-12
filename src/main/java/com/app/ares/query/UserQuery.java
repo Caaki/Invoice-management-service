@@ -117,7 +117,10 @@ public class UserQuery {
 
 
 
-
+    public static final String UPDATE_USER_PASSWORD_BY_USER_ID_QUERY=
+            "UPDATE Users " +
+            "SET password = :password " +
+            "WHERE id = :userId";
 
 
 

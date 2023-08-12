@@ -48,8 +48,8 @@ public class UserServiceImpl implements UserService {
         return mapToUserDTO(userRepository.verifyPasswordKey(key));
     }
     @Override
-    public void renewPassword(String key, String password, String confirmation) {
-        userRepository.renewPassword(key, password, confirmation);
+    public void updatePassword(Long id, String password, String confirmation) {
+        userRepository.renewPassword(id, password, confirmation);
     }
 
     @Override

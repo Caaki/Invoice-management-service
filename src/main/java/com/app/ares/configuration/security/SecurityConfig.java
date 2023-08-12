@@ -43,6 +43,7 @@ public class SecurityConfig {
             "/user/verify/account/**",
             "/user/refresh/token/**",
             "/user/image/**",
+            "/user/new/password**"
 
     };
 

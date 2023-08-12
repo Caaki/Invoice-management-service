@@ -13,7 +13,7 @@ public interface UserService {
     UserDTO verifyCode(String email, String code);
     void resetPassword(String email);
     UserDTO verifyPasswordKey(String key);
-    void renewPassword(String key, String password, String confirmation);
+    void updatePassword(Long id, String password, String confirmation);
     UserDTO verifyAccountCode(String code);
     UserDTO updateUserDetails(UpdateForm user);
     UserDTO getUserById(Long userId);

@@ -35,10 +35,10 @@ import java.nio.file.Files;
 import java.nio.file.Paths;
 import java.time.LocalDateTime;
 import java.util.Map;
-import java.util.concurrent.TimeUnit;
 
 import static com.app.ares.utils.ExceptionUtils.processError;
-import static com.app.ares.utils.UserUtils.*;
+import static com.app.ares.utils.UserUtils.getAuthenticatedUser;
+import static com.app.ares.utils.UserUtils.getLoggedInUser;
 import static java.time.LocalDateTime.now;
 import static java.util.Map.of;
 import static org.springframework.http.HttpHeaders.AUTHORIZATION;
@@ -72,7 +72,7 @@ public class UserController {
 
 
     @PostMapping("/register")
-    public ResponseEntity<HttpResponse> saveUser(@RequestBody @Valid User user){
+    public ResponseEntity<HttpResponse> saveUser(@RequestBody @Valid User user) throws InterruptedException {
         UserDTO userDto = userService.createUser(user);
         return ResponseEntity.created(getUri()).body(
                 HttpResponse.builder()
@@ -212,6 +212,21 @@ public class UserController {
         return Files.readAllBytes(Paths.get(System.getProperty("user.home") +"/Downloads/images/" + fileName));
     }
 
+
+    //Verify account
+    @GetMapping("/verify/account/{code}")
+    public ResponseEntity<HttpResponse> verifyAccount(@PathVariable("code") String code){
+        return ResponseEntity.ok().body(
+                HttpResponse.builder()
+                        .timeStamp(now().toString())
+                        .message(userService.verifyAccountCode(code).isEnabled()?
+                                "Account already verified." : "Account verified.")
+                        .status(OK)
+                        .statusCode(OK.value())
+                        .build());
+    }
+    //End of verify account
+
     //Reset password methods
     @GetMapping("/resetpassword/{email}")
     public ResponseEntity<HttpResponse> resetPassword (@PathVariable("email") String email){
@@ -227,7 +242,8 @@ public class UserController {
     }
 
     @GetMapping("/verify/password/{key}")
-    public ResponseEntity<HttpResponse> verifyPasswordUrlNotLoggedIn (@PathVariable("key") String key){
+    public ResponseEntity<HttpResponse> verifyPasswordUrlNotLoggedIn (@PathVariable("key") String key) throws InterruptedException {
+
         UserDTO userDTO = userService.verifyPasswordKey(key);
         return ResponseEntity.ok().body(
                 HttpResponse.builder()
@@ -240,12 +256,9 @@ public class UserController {
     }
 
 
-    @PostMapping("/resetpassword/{key}/{password}/{confirmation}")
-    public ResponseEntity<HttpResponse> resetPasswordWithKeyNotLoggedIn(
-            @PathVariable("key") String key,
-            @PathVariable("password") String password,
-            @PathVariable("confirmation") String confirmation){
-        userService.renewPassword(key, password, confirmation);
+    @PutMapping("/new/password")
+    public ResponseEntity<HttpResponse> resetPasswordWithKeyNotLoggedIn(@RequestBody @Valid NewPasswordForm form){
+        userService.updatePassword(form.getUserId(), form.getPassword(), form.getConfirmPassword());
         return ResponseEntity.ok().body(
                 HttpResponse.builder()
                         .timeStamp(now().toString())
@@ -256,19 +269,6 @@ public class UserController {
     }
     // Reset password methods ended
 
-    //Verify account
-    @GetMapping("/verify/account/{code}")
-    public ResponseEntity<HttpResponse> verifyAccount(@PathVariable("code") String code){
-        return ResponseEntity.ok().body(
-                HttpResponse.builder()
-                        .timeStamp(now().toString())
-                        .message(userService.verifyAccountCode(code).isEnabled()?
-                                "Account already verified." : "Account verified.")
-                        .status(OK)
-                        .statusCode(OK.value())
-                        .build());
-    }
-    //End of verify account
 
     @GetMapping("/refresh/token")
     public ResponseEntity<HttpResponse> refreshToken(HttpServletRequest request){
