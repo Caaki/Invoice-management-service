@@ -11,7 +11,6 @@ import com.app.ares.repository.RoleRepository;
 import com.app.ares.repository.UserRepository;
 import com.app.ares.rowmapper.UserRowMapper;
 import com.app.ares.service.EmailService;
-import com.app.ares.utils.SmsUtils;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.dao.EmptyResultDataAccessException;
@@ -33,17 +32,16 @@ import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.Paths;
 import java.time.LocalDateTime;
-import java.time.format.DateTimeFormatter;
 import java.util.Collection;
 import java.util.Map;
 import java.util.UUID;
 import java.util.concurrent.CompletableFuture;
 
+import static com.app.ares.constants.Constants.*;
 import static com.app.ares.enumeration.RoleType.ROLE_USER;
 import static com.app.ares.enumeration.VerificationType.ACCOUNT;
 import static com.app.ares.enumeration.VerificationType.PASSWORD;
 import static com.app.ares.query.UserQuery.*;
-import static com.app.ares.utils.SmsUtils.sendSMS;
 import static java.nio.file.StandardCopyOption.REPLACE_EXISTING;
 import static java.util.Map.of;
 import static java.util.Objects.requireNonNull;
@@ -54,7 +52,6 @@ import static org.apache.commons.lang3.StringUtils.isBlank;
 @RequiredArgsConstructor
 @Slf4j
 public class UserRepositoryImpl implements UserRepository<User>, UserDetailsService {
-    private static final DateTimeFormatter DATE_FORMAT = DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm:ss");
     private final NamedParameterJdbcTemplate jdbcTemplate;
     private final RoleRepository<Role> roleRepository;
     private final BCryptPasswordEncoder passwordEncoder;
@@ -143,7 +140,7 @@ public class UserRepositoryImpl implements UserRepository<User>, UserDetailsServ
 
         } catch (EmptyResultDataAccessException e) {
             log.error(e.getMessage());
-            throw new ApiException("No user found by email: " + email);
+            throw new ApiException("Bad credentials");
         } catch (Exception e) {
             log.error(e.getMessage());
             throw new ApiException("An error occurred. Please try again");

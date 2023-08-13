@@ -2,6 +2,7 @@ package com.app.ares.repository.Implementation;
 
 import com.app.ares.domain.UserEvent;
 import com.app.ares.enumeration.EventType;
+import com.app.ares.exception.ApiException;
 import com.app.ares.repository.EventRepository;
 import com.app.ares.rowmapper.UserEventRowMapper;
 import lombok.RequiredArgsConstructor;
@@ -32,6 +33,7 @@ public class EventRepositoryImpl implements EventRepository {
 
     @Override
     public void addUserEvent(String email, EventType eventType, String device, String ipAddress) {
+
         jdbcTemplate.update(INSERT_EVENT_BY_USER_EMAIL_QUERY, Map.of(
                 "email", email,
                 "type", eventType.toString(),

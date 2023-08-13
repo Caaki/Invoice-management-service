@@ -10,6 +10,7 @@ import org.springframework.context.annotation.Configuration;
 import org.springframework.security.authentication.AuthenticationManager;
 import org.springframework.security.authentication.ProviderManager;
 import org.springframework.security.authentication.dao.DaoAuthenticationProvider;
+import org.springframework.security.config.Customizer;
 import org.springframework.security.config.annotation.method.configuration.EnableMethodSecurity;
 import org.springframework.security.config.annotation.web.builders.HttpSecurity;
 import org.springframework.security.config.annotation.web.configuration.EnableWebSecurity;
@@ -19,8 +20,10 @@ import org.springframework.security.crypto.bcrypt.BCryptPasswordEncoder;
 import org.springframework.security.web.SecurityFilterChain;
 import org.springframework.security.web.authentication.UsernamePasswordAuthenticationFilter;
 
+import static com.app.ares.constants.Constants.PUBLIC_URLS;
 import static org.springframework.http.HttpMethod.DELETE;
 import static org.springframework.http.HttpMethod.OPTIONS;
+import static org.springframework.security.config.Customizer.withDefaults;
 import static org.springframework.security.config.http.SessionCreationPolicy.STATELESS;
 
 @RequiredArgsConstructor
@@ -34,31 +37,20 @@ public class SecurityConfig {
     private final CustomAuthenticationEntryPoint customAuthenticationEntryPoint;
     private final UserDetailsService userDetailsService;
     private final CustomAuthorizationFilter customAuthorizationFilter;
-    private static final String[] PUBLIC_URLS ={
-            "/user/login/**",
-            "/user/register/**",
-            "/user/verify/code/**",
-            "/user/verify/password/**",
-            "/user/resetpassword/**",
-            "/user/verify/account/**",
-            "/user/refresh/token/**",
-            "/user/image/**",
-            "/user/new/password**"
 
-    };
 
     @Bean
     public SecurityFilterChain securityFilterChain(HttpSecurity http) throws Exception {
-        http
-                .csrf().disable()
-                .cors();
-        http.sessionManagement().sessionCreationPolicy(STATELESS);
-        http.authorizeHttpRequests().requestMatchers(PUBLIC_URLS).permitAll();
-        http.authorizeHttpRequests().requestMatchers(OPTIONS).permitAll();
-        http.authorizeHttpRequests().requestMatchers(DELETE, "/user/delete/**").hasAnyAuthority("DELETE:USER");
-        http.authorizeHttpRequests().requestMatchers(DELETE, "/customer/delete/**").hasAnyAuthority("DELETE:CUSTOMER");
-        http.exceptionHandling().accessDeniedHandler(customDeniedHandler).authenticationEntryPoint(customAuthenticationEntryPoint);
-        http.authorizeHttpRequests().anyRequest().authenticated();
+
+        http.csrf(csrf -> csrf.disable()).cors(withDefaults());
+
+        http.sessionManagement(session -> session.sessionCreationPolicy(STATELESS));
+        http.authorizeHttpRequests(request-> request.requestMatchers(PUBLIC_URLS).permitAll());
+        http.authorizeHttpRequests(request-> request.requestMatchers(OPTIONS).permitAll());
+        http.authorizeHttpRequests(request-> request.requestMatchers(DELETE, "/user/delete/**").hasAnyAuthority("DELETE:USER"));
+        http.authorizeHttpRequests(request-> request.requestMatchers(DELETE, "/customer/delete/**").hasAnyAuthority("DELETE:CUSTOMER"));
+        http.exceptionHandling(exception -> exception.accessDeniedHandler(customDeniedHandler).authenticationEntryPoint(customAuthenticationEntryPoint));
+        http.authorizeHttpRequests(request-> request.anyRequest().authenticated());
         http.addFilterBefore(customAuthorizationFilter, UsernamePasswordAuthenticationFilter.class);
         return http.build();
     }

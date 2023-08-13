@@ -24,6 +24,7 @@ import java.util.Date;
 import java.util.List;
 import java.util.Objects;
 
+import static com.app.ares.constants.Constants.*;
 import static com.auth0.jwt.algorithms.Algorithm.HMAC512;
 import static java.lang.System.currentTimeMillis;
 import static java.util.Arrays.stream;
@@ -35,12 +36,7 @@ import static java.util.stream.Collectors.toList;
 public class TokenProvider {
 
     private final UserService userService;
-    public static final String TOKEN_CANNOT_BE_VERIFIED = "Token cannot be verified";
-    private static final String ARES ="ARES";
-    private static final String CUSTOMER_MANAGEMENT_SERVICE = "CUSTOMER_MANAGEMENT_SERVICE";
-    private static final String AUTHORITIES = "authorities";
-    private static final long ACESS_TOKEN_EXPIRATION_TIME = 1_800_000;
-    private static final long REFRESH_TOKEN_EXPIRATION_TIME = 432_000_000;
+
     @Value("${jwt.secret}")
     private String secret;
 
@@ -53,7 +49,7 @@ public class TokenProvider {
                 .withIssuedAt(new Date())
                 .withSubject(String.valueOf(userPrincipal.getUser().getId()))
                 .withArrayClaim(AUTHORITIES, claims)
-                .withExpiresAt(new Date(currentTimeMillis() + ACESS_TOKEN_EXPIRATION_TIME))
+                .withExpiresAt(new Date(currentTimeMillis() + ACCESS_TOKEN_EXPIRATION_TIME))
                 .sign(HMAC512(secret.getBytes()));
     }
 

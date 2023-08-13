@@ -36,6 +36,7 @@ import java.nio.file.Paths;
 import java.time.LocalDateTime;
 import java.util.Map;
 
+import static com.app.ares.constants.Constants.*;
 import static com.app.ares.utils.ExceptionUtils.processError;
 import static com.app.ares.utils.UserUtils.getAuthenticatedUser;
 import static com.app.ares.utils.UserUtils.getLoggedInUser;
@@ -50,8 +51,6 @@ import static org.springframework.http.MediaType.IMAGE_PNG_VALUE;
 @RequestMapping("/user")
 @RequiredArgsConstructor
 public class UserController {
-
-    private static final String TOKEN_PREFIX = "Bearer ";
 
     private final UserService userService;
     private final HttpServletRequest request;
@@ -357,19 +356,22 @@ public class UserController {
     }
 
     private UserDTO authenticate(String email, String password) {
+        UserDTO user = userService.getUserByEmail(email);
         try{
-            if (null!= userService.getUserByEmail(email)){
+            if (null!= user){
                 publisher.publishEvent(new NewUserEvent(email, EventType.LOGIN_ATTEMPT));
             }
             Authentication authentication = authenticationManager.authenticate(new UsernamePasswordAuthenticationToken(email,password));
             UserDTO loggedInUSer = getLoggedInUser(authentication);
             if (!loggedInUSer.isUsingMfa()){
                 publisher.publishEvent(new NewUserEvent(email, EventType.LOGIN_ATTEMPT_SUCCESS));
-
             }
             return loggedInUSer;
+
         }catch (Exception e ){
-            publisher.publishEvent(new NewUserEvent(email, EventType.LOGIN_ATTEMPT_FAILURE));
+            if (null!= user){
+                publisher.publishEvent(new NewUserEvent(email, EventType.LOGIN_ATTEMPT_FAILURE));
+            }
             processError(request,response,e);
             throw new ApiException(e.getMessage());
         }

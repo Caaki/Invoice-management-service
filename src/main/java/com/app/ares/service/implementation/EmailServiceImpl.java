@@ -24,7 +24,7 @@ public class EmailServiceImpl implements EmailService {
         try{
 
             SimpleMailMessage message = new SimpleMailMessage();
-            message.setFrom("<Email>");
+            message.setFrom("EMAIL");
             message.setTo(email);
             message.setText(getEmailMessage(firstName, verificationUrl, type));
             message.setSubject(String.format("Ares - %s Verification email", StringUtils.capitalize(type.getType())));
