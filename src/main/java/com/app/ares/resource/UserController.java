@@ -117,8 +117,9 @@ public class UserController {
 
     @PreAuthorize("hasAuthority('UPDATE:USER')")
     @PatchMapping("/update")
-    public ResponseEntity<HttpResponse> updateUser(@RequestBody @Valid UpdateForm user) {
-        UserDTO updatedUser = userService.updateUserDetails(user);
+    public ResponseEntity<HttpResponse> updateUser(@RequestBody @Valid UpdateForm user,Authentication authentication) {
+        UserDTO authUser = getAuthenticatedUser(authentication);
+        UserDTO updatedUser = userService.updateUserDetails(user, authUser.getId());
         publisher.publishEvent(new NewUserEvent(updatedUser.getEmail(),EventType.PROFILE_UPDATE));
         return ResponseEntity.ok().body(
                 HttpResponse.builder()

@@ -301,10 +301,10 @@ public class UserRepositoryImpl implements UserRepository<User>, UserDetailsServ
     }
 
     @Override
-    public User updateUserDetails(UpdateForm user) {
+    public User updateUserDetails(UpdateForm user, Long id) {
         try {
             jdbcTemplate.update(
-                    UPDATE_USER_DETAILS_QUERY, getSqlParameterSource(user));
+                    UPDATE_USER_DETAILS_QUERY, getSqlParameterSource(user, id));
             return get(user.getId());
         } catch (EmptyResultDataAccessException e) {
             throw new ApiException("No user found by id: " + user.getId());
@@ -437,8 +437,8 @@ public class UserRepositoryImpl implements UserRepository<User>, UserDetailsServ
 
     private Boolean isVerificationCodeExpired(String code) {
         try {
-            log.info(jdbcTemplate.queryForObject(SELECT_CODE_EXPIRATION_QUERY, Map.of("code", code), String.class));
-            log.info(String.valueOf(LocalDateTime.now()));
+//            log.info(jdbcTemplate.queryForObject(SELECT_CODE_EXPIRATION_QUERY, Map.of("code", code), String.class));
+//            log.info(String.valueOf(LocalDateTime.now()));
             return jdbcTemplate.queryForObject(SELECT_CODE_EXPIRATION_QUERY, Map.of("code", code), Boolean.class);
         } catch (EmptyResultDataAccessException exception) {
             throw new ApiException("This code is not valid. Please try again.");
@@ -468,10 +468,10 @@ public class UserRepositoryImpl implements UserRepository<User>, UserDetailsServ
                 .addValue("password", passwordEncoder.encode(user.getPassword()));
     }
 
-    private SqlParameterSource getSqlParameterSource(UpdateForm user) {
+    private SqlParameterSource getSqlParameterSource(UpdateForm user, Long id) {
 
         return new MapSqlParameterSource()
-                .addValue("id", user.getId())
+                .addValue("id", id)
                 .addValue("firstName", user.getFirstName())
                 .addValue("lastName", user.getLastName())
                 .addValue("email", user.getEmail())

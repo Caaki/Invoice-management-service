@@ -58,8 +58,8 @@ public class UserServiceImpl implements UserService {
     }
 
     @Override
-    public UserDTO updateUserDetails(UpdateForm user) {
-        return mapToUserDTO(userRepository.updateUserDetails(user));
+    public UserDTO updateUserDetails(UpdateForm user, Long id) {
+        return mapToUserDTO(userRepository.updateUserDetails(user, id));
     }
 
     @Override

@@ -40,8 +40,8 @@ public class Constants {
     public static final String ARES ="ARES";
     public static final String CUSTOMER_MANAGEMENT_SERVICE = "CUSTOMER_MANAGEMENT_SERVICE";
     public static final String AUTHORITIES = "authorities";
-    public static final long ACCESS_TOKEN_EXPIRATION_TIME = 1_800_000;
-    public static final long REFRESH_TOKEN_EXPIRATION_TIME = 432_000_000;
+    public static final long ACCESS_TOKEN_EXPIRATION_TIME = 15_000;//1_800_000;
+    public static final long REFRESH_TOKEN_EXPIRATION_TIME = 25_000;//432_000_000;
 
 
 

@@ -1,47 +1,25 @@
-jwt:
-  secret: thisIsMySecretForTesting
+#JWT secret
+JWT_SECRET: myseecret
 
-server:
-  error:
-    path: /user/error
-    whitelabel:
-      enabled: false
+# Database
+MYSQL_USERNAME: root
+MYSQL_PASSWORD: 1201991n
+MYSQL_HOST: localhost
+MYSQL_PORT: 3306
+MYSQL_DATABASE: invoice_project
 
-spring:
-  datasource:
-    url: jdbc:mysql://192.168.1.44:3306/invoice_project
-    username: caki
-    password: 1201991n
-  jpa:
-    database-platform: org.hibernate.dialect.MySQL8InnoDBDialect
-    generate-ddl: true
-    show-sql: true
-    hibernate:
-      ddl-auto: update
-    properties:
-      hibernate:
-        globally_quoted_indentifiers: true
-        dialect: org.hibernate.dialect.MySQL8Dialect
-        format_sql: true
-  sql:
-    init:
-      mode: never
-      continue-on-error: false
+#Server config
+CONTAINER_PORT: 8080
+ACTIVE_PROFILE: dev
 
-  mail:
-    host: smtp.gmail.com
-    port: 587
-    username: EMAIL
-    password: PASSWORD
-    properties:
-      mail:
-        smtp:
-          writetimeout: 5000
-          connectiontimeout: 5000
-          timeout: 5000
-          auth: true
-          starttls:
-            enable: true
-            required: true
+#Email Config
+EMAIL_HOST: smtp.gmail.com
+EMAIL_PORT: 587
+EMAIL_ID: nikolalazin7@gmail.com
+EMAIL_PASSWORD: khrflfxpfztuutcd
+VERIFY_EMAIL_HOST: http://localhost:${CONTAINER_PORT}
 
 
+#UI app url
+
+UI_APP_URL: http://localhost:4200

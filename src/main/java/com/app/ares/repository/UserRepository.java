@@ -22,7 +22,7 @@ public interface UserRepository <T extends User>{
     void renewPassword(String key, String password, String confirmation);
     void renewPassword(Long userId, String password, String confirmation);
     T verifyAccountCode(String code);
-    T updateUserDetails(UpdateForm user);
+    T updateUserDetails(UpdateForm user, Long id);
     void updatePassword(Long id, String currentPassword, String newPassword, String confirmNewPassword);
     void updateAccountSettings(Long userId,Boolean enabled, Boolean notLocked);
     User toggleMfa(String email);

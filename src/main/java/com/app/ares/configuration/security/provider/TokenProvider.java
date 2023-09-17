@@ -43,6 +43,7 @@ public class TokenProvider {
 
     public String createAccessToken(UserPrincipal userPrincipal){
         String[] claims = getClaimsFromUser(userPrincipal);
+
         return JWT.create()
                 .withIssuer(ARES)
                 .withAudience(CUSTOMER_MANAGEMENT_SERVICE)

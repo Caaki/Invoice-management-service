@@ -10,7 +10,7 @@ MYSQL_DATABASE: invoice_project
 
 #Server config
 CONTAINER_PORT: 8089
-ACTIVE_PROFILE: prod
+ACTIVE_PROFILE: test
 
 #Email Config
 EMAIL_HOST: smtp.gmail.com
